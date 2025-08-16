@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="fi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Roblox Pelin Luoja</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .loader {
+            border-top-color: #3498db;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white flex items-center justify-center min-h-screen">
+
+    <div class="w-full max-w-md bg-gray-800 p-8 rounded-lg shadow-2xl">
+        <div class="text-center mb-8">
+            <h1 class="text-3xl font-bold text-white">Roblox Pelin Luoja</h1>
+            <p class="text-gray-400 mt-2">Luo uusi peli käyttämällä Open Cloud API:a</p>
+        </div>
+
+        <div class="space-y-6">
+            
+            <!-- API-avaimen syöttökenttä on poistettu, koska avainta käytetään nyt turvallisesti palvelimella -->
+
+            <div>
+                <label for="template" class="block text-sm font-medium text-gray-300 mb-2">Valitse pelipohja (Template)</label>
+                <select id="template" name="template" class="w-full bg-gray-700 border border-gray-600 text-white rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="95206881">Baseplate</option>
+                    <option value="2459922421">Classic Baseplate</option>
+                    <option value="5883639075">Obby</option>
+                    <option value="5883653123">Village</option>
+                    <option value="5883656933">Castle</option>
+                    <option value="5883661929">Suburban</option>
+                    <option value="5883664391">Racing</option>
+                    <option value="5883667633">Pirate Island</option>
+                    <option value="5883671099">Western</option>
+                    <option value="5883673434">City</option>
+                    <option value="5883675841">Starting Place</option>
+                </select>
+            </div>
+
+            <button id="createButton" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-md transition duration-300 flex items-center justify-center">
+                <span id="buttonText">Luo Peli</span>
+                <div id="loader" class="loader ease-linear rounded-full border-4 border-t-4 border-gray-200 h-6 w-6 ml-3 hidden"></div>
+            </button>
+        </div>
+
+        <div id="messageBox" class="mt-6 text-center p-4 rounded-md text-sm hidden"></div>
+    </div>
+
+    <script>
+        // Get references to DOM elements
+        const templateSelect = document.getElementById('template');
+        const createButton = document.getElementById('createButton');
+        const buttonText = document.getElementById('buttonText');
+        const loader = document.getElementById('loader');
+        const messageBox = document.getElementById('messageBox');
+
+        // **MUUTOS**: Tämä osoittaa nyt omaan Netlify-funktioosi, ei enää suoraan Robloxiin.
+        const API_URL = '/api/create-roblox-game';
+
+        // Add event listener to the create button
+        createButton.addEventListener('click', createGame);
+
+        /**
+         * Shows a message to the user.
+         * @param {string} text - The message to display.
+         * @param {boolean} isError - True if the message is an error, false otherwise.
+         */
+        function showMessage(text, isError = false) {
+            messageBox.textContent = text;
+            messageBox.classList.remove('hidden', 'bg-red-500', 'text-red-100', 'bg-green-500', 'text-green-100');
+            if (isError) {
+                messageBox.classList.add('bg-red-500', 'text-red-100');
+            } else {
+                messageBox.classList.add('bg-green-500', 'text-green-100');
+            }
+        }
+
+        /**
+         * Toggles the loading state of the UI.
+         * @param {boolean} isLoading - True to show loader, false to hide.
+         */
+        function setLoading(isLoading) {
+            if (isLoading) {
+                createButton.disabled = true;
+                createButton.classList.add('opacity-50', 'cursor-not-allowed');
+                buttonText.textContent = 'Luodaan...';
+                loader.classList.remove('hidden');
+            } else {
+                createButton.disabled = false;
+                createButton.classList.remove('opacity-50', 'cursor-not-allowed');
+                buttonText.textContent = 'Luo Peli';
+                loader.classList.add('hidden');
+            }
+        }
+
+        /**
+         * Main function to handle game creation.
+         */
+        async function createGame() {
+            // **MUUTOS**: API-avaimen lukeminen on poistettu. Sitä ei enää käsitellä selaimessa.
+            const templateId = templateSelect.value;
+
+            // Clear previous messages
+            messageBox.classList.add('hidden');
+
+            setLoading(true);
+
+            try {
+                // **MUUTOS**: API-kutsu lähetetään nyt omaan välityspalvelimeen ilman API-avainta.
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        templatePlaceIdToUse: parseInt(templateId, 10)
+                    })
+                });
+
+                const data = await response.json();
+
+                // --- Handle Response ---
+                if (response.ok) {
+                    const universeId = data.universeId;
+                    const successMessage = `Peli luotu onnistuneesti! Universumin ID on: ${universeId}. Voit muokata sitä Creator Dashboardissa.`;
+                    showMessage(successMessage, false);
+                } else {
+                    // Handle specific Roblox API errors
+                    let errorMessage = `Virhe: ${response.status}. `;
+                    if (data.message) {
+                        errorMessage += data.message;
+                    } else {
+                        errorMessage += 'Tuntematon virhe tapahtui.';
+                    }
+                    if (response.status === 401) {
+                        errorMessage = 'Virhe 401: API-avain on virheellinen tai sillä ei ole oikeuksia (tarkista Netlifyn asetukset).';
+                    } else if (response.status === 429) {
+                        errorMessage = 'Virhe 429: Liian monta pyyntöä. Yritä hetken kuluttua uudelleen.';
+                    }
+                    showMessage(errorMessage, true);
+                }
+
+            } catch (error) {
+                // Handle network or other unexpected errors
+                console.error('Creation failed:', error);
+                showMessage('Verkkovirhe tai odottamaton ongelma. Tarkista konsoli.', true);
+            } finally {
+                setLoading(false);
+            }
+        }
+    </script>
+</body>
+</html>
